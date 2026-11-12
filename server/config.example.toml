@@ -1,0 +1,68 @@
+# Blue-Handed server configuration.
+# Copy to config.toml and edit:  cp config.example.toml config.toml
+# Never commit config.toml (it holds passwords).
+
+[database]
+path = "bluehanded.db"
+
+[mqtt]
+enabled = true
+host = "localhost"          # Mosquitto runs on the Pi itself
+port = 1883                 # 8883 when TLS is enabled (Step 9)
+username = "bluehanded-server"
+password = "change-me"
+tls_ca = ""                 # e.g. "/etc/mosquitto/certs/ca.crt" to enable TLS
+topic_prefix = "blue-handed"
+
+[web]
+host = "0.0.0.0"
+port = 5000
+secret_key = ""             # leave empty to generate one at start (logs everyone out on restart)
+
+[room]
+name = "Exam Hall"
+width = 12.0                # metres, x axis (left -> right, seen from the front)
+height = 8.0                # metres, y axis (front -> back)
+
+# Defaults for the thresholds. After the first start you change them in
+# Admin > Thresholds, and the dashboard values win.
+[settings]
+rssi_at_1m = -60.0
+path_loss_n = 2.5
+kalman_q = 0.5
+kalman_r = 8.0
+node_min_rssi = -90
+scan_seconds = 3
+proximity_m = 3.0
+inside_margin_m = 0.5
+persistence_cycles = 3
+persistence_window_s = 30
+stale_s = 15
+audio_only = false
+retention_days = 7
+
+# Initial node positions (metres from the front-left corner). You can also
+# add and move nodes later in Admin > Nodes.
+[[nodes]]
+id = "node-1"
+label = "Front left"
+x = 0.0
+y = 0.0
+
+[[nodes]]
+id = "node-2"
+label = "Front right"
+x = 12.0
+y = 0.0
+
+[[nodes]]
+id = "node-3"
+label = "Back left"
+x = 0.0
+y = 8.0
+
+[[nodes]]
+id = "node-4"
+label = "Back right"
+x = 12.0
+y = 8.0

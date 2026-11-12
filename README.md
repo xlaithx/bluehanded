@@ -16,11 +16,44 @@ Blue-Handed is an anti-cheat system for exam halls. ESP32 nodes passively scan B
 ## Structure
 
 - `docs/`: project report and documents
+  - `docs/steps/`: **step-by-step build guide**, start with [Step 0: Overview](docs/steps/00-overview.md)
 - `esp32-node/`: ESP32 firmware (PlatformIO project, Arduino framework)
+  - `src/node.cpp`: final scanning node firmware (env `node`)
+  - `src/main.cpp`, `src/wifi_test.cpp`, `src/mqtt_test.cpp`: bench test programs
+- `server/`: Raspberry Pi application (Python): MQTT ingest, Kalman filter, multilateration, detection rules, SQLite, Flask + Socket.IO dashboard
 
-## Status
+## Quick start (no hardware needed)
 
-Early development. The current firmware in `esp32-node/src/main.cpp` is **test code**: a passive BLE scanner used to check that each ESP32 board and its Bluetooth work. It is not the final detection system.
+```bash
+cd server
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+python -m bluehanded create-user admin --role admin
+python -m bluehanded serve --simulate      # open http://localhost:5000
+python -m pytest                           # run the tests
+```
+
+`--simulate` runs four fake nodes and five fake devices (hidden earbuds, a phone, an invigilator's watch, a phone in the corridor) so you can see alerts, the live map and the admin pages.
+
+## The build guide
+
+| Step | Guide |
+|---|---|
+| 0 | [Overview, architecture, MQTT format](docs/steps/00-overview.md) |
+| 1 | [Hardware and bench testing](docs/steps/01-hardware-and-bench-testing.md) |
+| 2 | [Raspberry Pi and MQTT broker](docs/steps/02-raspberry-pi-and-mqtt-broker.md) |
+| 3 | [ESP32 node firmware](docs/steps/03-esp32-node-firmware.md) |
+| 4 | [Server and dashboard](docs/steps/04-server-and-dashboard.md) |
+| 5 | [Node placement and calibration](docs/steps/05-node-placement-and-calibration.md) |
+| 6 | [Localization and detection](docs/steps/06-localization-and-detection.md) |
+| 7 | [Running an exam](docs/steps/07-running-an-exam.md) |
+| 8 | [Field testing](docs/steps/08-field-testing.md) |
+| 9 | [Security hardening](docs/steps/09-security-hardening.md) |
+| 10 | [Final report and jury demo](docs/steps/10-final-report-and-demo.md) |
+
+## Bench test programs
+
+The sections below describe the original test programs used to check each board (Step 1). The final firmware is `src/node.cpp` (environment `node`, see Step 3).
 
 ## Running the test code
 
@@ -67,7 +100,7 @@ Notes:
 - Close the Serial Monitor before uploading, because it can block the port.
 ## Wi-Fi test
 
-The project has two PlatformIO environments:
+The project has these PlatformIO environments (plus `node`, the final firmware, see Step 3):
 - `esp32dev` (default): the BLE scanner test (`src/main.cpp`). It does not need Wi-Fi settings.
 - `wifi_test`: connects the ESP32 to Wi-Fi and prints its IP address (`src/wifi_test.cpp`).
 
@@ -88,7 +121,7 @@ Never commit `secrets.h`: it contains your Wi-Fi password and is ignored by Git.
 
 ## Wi-Fi and MQTT tests
 
-The project has three PlatformIO environments:
+The test environments are:
 - `esp32dev` (default): BLE scanner test (`src/main.cpp`). It does not need Wi-Fi settings.
 - `wifi_test`: connects the ESP32 to Wi-Fi and prints its IP address (`src/wifi_test.cpp`).
 - `mqtt_test`: connects to Wi-Fi, then to an MQTT broker, and publishes a message every 2 seconds (`src/mqtt_test.cpp`).

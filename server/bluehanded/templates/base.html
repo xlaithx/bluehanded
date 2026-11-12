@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}">
+  <title>{% block title %}Blue-Handed{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('dashboard') }}"><span class="logo">&#9995;</span> Blue-Handed</a>
+    {% if user %}
+    <nav>
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('alerts_page') }}">Alert log</a>
+      {% if user.role == 'admin' %}<a href="{{ url_for('admin') }}">Admin</a>{% endif %}
+    </nav>
+    <div class="who">
+      <span class="session-name" title="Active exam session">{{ active_session.name }}</span>
+      <span>{{ user.username }} ({{ user.role }})</span>
+      <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Log out</button></form>
+    </div>
+    {% endif %}
+  </header>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}<div class="flashes">{% for cat, m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}</div>{% endif %}
+  {% endwith %}
+  <main>{% block body %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
