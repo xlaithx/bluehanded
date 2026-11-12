@@ -29,11 +29,11 @@ main { padding: 16px; max-width: 1500px; margin: 0 auto; }
 .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
 .dash { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 16px; }
-.dash .card { margin: 0; }
+.dash .card { margin: 0; min-width: 0; }
 .map-card { grid-row: span 2; }
 .devices-card { grid-column: 1 / -1; }
 @media (max-width: 900px) { .dash { grid-template-columns: 1fr; } .map-card { grid-row: auto; } }
-#map { width: 100%; display: block; cursor: pointer; }
+#map { width: 100%; max-width: 100%; display: block; cursor: pointer; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 12px; margin-top: 8px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }

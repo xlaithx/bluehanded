@@ -42,7 +42,7 @@
   }
 
   function drawMap() {
-    if (!state.room) return;
+    if (!state.room || canvas.clientWidth < 100) return;  // hidden or not laid out yet
     const g = geometry();
     const dpr = window.devicePixelRatio || 1;
     canvas.style.height = g.h + 'px';
