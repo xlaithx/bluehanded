@@ -1,0 +1,5 @@
+flask>=3.0,<4
+flask-socketio>=5.3,<6
+simple-websocket>=1.0
+paho-mqtt>=2.0,<3
+numpy>=1.24

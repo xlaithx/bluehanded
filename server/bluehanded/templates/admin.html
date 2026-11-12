@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Admin · Blue-Handed{% endblock %}
+{% macro csrf_field() %}<input type="hidden" name="csrf" value="{{ csrf }}">{% endmacro %}
+{% block body %}
+<nav class="subnav">
+  <a href="#sessions">Exam sessions</a><a href="#nodes">Nodes</a><a href="#settings">Thresholds</a>
+  <a href="#calibration">Calibration</a><a href="#whitelist">Whitelist</a><a href="#users">Users</a>
+</nav>
+
+<section class="card" id="sessions">
+  <h2>Exam sessions</h2>
+  <p class="hint">Every reading and alert belongs to the active session. Start a new session before each exam, export the log afterwards, then clear it when the review period ends.</p>
+  <form method="post" action="{{ url_for('admin_session') }}" class="row">
+    {{ csrf_field() }}<input type="hidden" name="action" value="new">
+    <input name="name" placeholder="e.g. CPE 351 Midterm, Hall B" required>
+    <button class="primary">Start new session</button>
+  </form>
+  <table>
+    <tr><th>#</th><th>Name</th><th>Started</th><th>Ended</th><th>Devices</th><th>Alerts</th><th>Export</th><th></th></tr>
+    {% for s in sessions %}
+    <tr>
+      <td>{{ s.id }}</td><td>{{ s.name }}{% if not s.ended_at %} <span class="tag on">active</span>{% endif %}</td>
+      <td class="ts" data-ts="{{ s.started_at }}"></td><td class="ts" data-ts="{{ s.ended_at or '' }}"></td>
+      <td>{{ s.devices }}</td><td>{{ s.alerts }}</td>
+      <td><a href="{{ url_for('export', session_id=s.id, fmt='csv') }}">CSV</a> · <a href="{{ url_for('export', session_id=s.id, fmt='json') }}">JSON</a></td>
+      <td><form method="post" action="{{ url_for('admin_session') }}" onsubmit="return confirm('Delete all data of this session? This cannot be undone.')">
+        {{ csrf_field() }}<input type="hidden" name="action" value="clear"><input type="hidden" name="session_id" value="{{ s.id }}">
+        <button class="link danger-text">Clear data</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <form method="post" action="{{ url_for('admin_session') }}" onsubmit="return confirm('Delete ALL readings, devices, alerts, past sessions and calibration points? This cannot be undone.')">
+    {{ csrf_field() }}<input type="hidden" name="action" value="clear">
+    <button class="danger">Clear all system data</button>
+  </form>
+  <p class="hint">Ended sessions older than {{ settings.retention_days }} days are deleted automatically.</p>
+</section>
+
+<section class="card" id="nodes">
+  <h2>Nodes</h2>
+  <p class="hint">Positions are in metres from the front-left corner of the hall (x to the right, y towards the back). Room size: {{ room.width }} × {{ room.height }} m (set in config.toml). New ESP32s appear here automatically, disabled, until you place them.</p>
+  <table>
+    <tr><th>ID</th><th>Label</th><th>x (m)</th><th>y (m)</th><th>Enabled</th><th>Status</th><th></th></tr>
+    {% for n in nodes %}
+    {% set f = "node-form-" ~ loop.index %}
+    <tr>
+      <td><code>{{ n.id }}</code>
+        <form id="{{ f }}" method="post" action="{{ url_for('admin_nodes') }}">{{ csrf_field() }}<input type="hidden" name="id" value="{{ n.id }}"></form></td>
+      <td><input form="{{ f }}" name="label" value="{{ n.label or '' }}"></td>
+      <td><input form="{{ f }}" name="x" type="number" step="0.01" value="{{ n.x }}" class="num"></td>
+      <td><input form="{{ f }}" name="y" type="number" step="0.01" value="{{ n.y }}" class="num"></td>
+      <td><input form="{{ f }}" type="checkbox" name="enabled" {% if n.enabled %}checked{% endif %}></td>
+      <td>{{ 'online' if n.online else 'offline' }}{% if n.ip %} · {{ n.ip }}{% endif %}{% if n.firmware %} · fw {{ n.firmware }}{% endif %}</td>
+      <td><button form="{{ f }}" name="action" value="save">Save</button>
+        <button form="{{ f }}" name="action" value="delete" class="link danger-text" onclick="return confirm('Delete node {{ n.id }}?')">Delete</button></td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <td><form id="node-form-new" method="post" action="{{ url_for('admin_nodes') }}">{{ csrf_field() }}</form>
+        <input form="node-form-new" name="id" placeholder="node-5" required></td>
+      <td><input form="node-form-new" name="label" placeholder="Middle wall"></td>
+      <td><input form="node-form-new" name="x" type="number" step="0.01" required class="num"></td>
+      <td><input form="node-form-new" name="y" type="number" step="0.01" required class="num"></td>
+      <td><input form="node-form-new" type="checkbox" name="enabled" checked></td><td></td>
+      <td><button form="node-form-new" class="primary">Add node</button></td>
+    </tr>
+  </table>
+</section>
+
+<section class="card" id="settings">
+  <h2>Detection thresholds</h2>
+  <form method="post" action="{{ url_for('admin_settings') }}" class="grid-form">
+    {{ csrf_field() }}
+    <label>Node minimum RSSI (dBm)<input name="node_min_rssi" type="number" value="{{ settings.node_min_rssi }}"><small>Nodes drop anything weaker. Sent to all nodes over MQTT.</small></label>
+    <label>Scan duration (s)<input name="scan_seconds" type="number" min="1" max="30" value="{{ settings.scan_seconds }}"><small>One scan cycle on each node.</small></label>
+    <label>Proximity threshold (m)<input name="proximity_m" type="number" step="0.1" value="{{ settings.proximity_m }}"><small>Device within this distance of a node counts as "near".</small></label>
+    <label>Inside-hall margin (m)<input name="inside_margin_m" type="number" step="0.1" value="{{ settings.inside_margin_m }}"><small>A device located at least this far inside the walls (needs 3+ nodes) also counts as near. Raise it if hallway devices alert.</small></label>
+    <label>Persistence (cycles)<input name="persistence_cycles" type="number" min="1" value="{{ settings.persistence_cycles }}"><small>Seen in at least this many scan cycles...</small></label>
+    <label>Persistence window (s)<input name="persistence_window_s" type="number" min="5" value="{{ settings.persistence_window_s }}"><small>...within this window. Filters out people walking past.</small></label>
+    <label>Stale after (s)<input name="stale_s" type="number" min="3" value="{{ settings.stale_s }}"><small>Readings older than this are ignored.</small></label>
+    <label>RSSI at 1 m (dBm)<input name="rssi_at_1m" type="number" step="0.1" value="{{ settings.rssi_at_1m }}"><small>Path loss model RSSI₀ (set by calibration).</small></label>
+    <label>Path loss exponent n<input name="path_loss_n" type="number" step="0.01" value="{{ settings.path_loss_n }}"><small>2 in free space, 2.5 to 4 indoors.</small></label>
+    <label>Kalman Q (process noise)<input name="kalman_q" type="number" step="0.01" value="{{ settings.kalman_q }}"><small>Higher reacts faster to movement.</small></label>
+    <label>Kalman R (measurement noise)<input name="kalman_r" type="number" step="0.1" value="{{ settings.kalman_r }}"><small>Higher smooths more.</small></label>
+    <label>Data retention (days)<input name="retention_days" type="number" min="1" value="{{ settings.retention_days }}"></label>
+    <label class="check"><input type="checkbox" name="audio_only" {% if settings.audio_only %}checked{% endif %}> Only alert for audio devices (earphones, headsets)</label>
+    <div><button class="primary">Save thresholds</button></div>
+  </form>
+</section>
+
+<section class="card" id="calibration">
+  <h2>Path loss calibration</h2>
+  <ol class="hint">
+    <li>Pick one node and a test phone/earbud. Find its MAC on the dashboard.</li>
+    <li>Hold the device at a measured distance (start at 1 m) for 10–20 seconds, then click <b>Record point</b>.</li>
+    <li>Repeat at 2, 3, 4, 6 and 8 m (and with other nodes if you like), then click <b>Fit model</b>.</li>
+  </ol>
+  <form method="post" action="{{ url_for('admin_calibration') }}" class="row">
+    {{ csrf_field() }}<input type="hidden" name="action" value="sample">
+    <select name="node_id">{% for n in nodes %}<option>{{ n.id }}</option>{% endfor %}</select>
+    <input name="mac" placeholder="aa:bb:cc:dd:ee:ff" required>
+    <input name="distance" type="number" step="0.1" min="0.1" placeholder="distance (m)" required class="num">
+    <input name="seconds" type="number" value="15" min="3" class="num" title="average the last N seconds">
+    <button>Record point</button>
+  </form>
+  <table>
+    <tr><th>Node</th><th>Device</th><th>Distance</th><th>Mean RSSI</th><th>Samples</th><th></th></tr>
+    {% for c in calib %}
+    <tr><td>{{ c.node_id }}</td><td><code>{{ c.mac }}</code></td><td>{{ c.distance }} m</td><td>{{ '%.1f'|format(c.mean_rssi) }} dBm</td><td>{{ c.samples }}</td>
+      <td><form method="post" action="{{ url_for('admin_calibration') }}">{{ csrf_field() }}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ c.id }}"><button class="link">Delete</button></form></td></tr>
+    {% else %}<tr><td colspan="6" class="empty">No calibration points yet.</td></tr>{% endfor %}
+  </table>
+  <div class="row">
+    <form method="post" action="{{ url_for('admin_calibration') }}">{{ csrf_field() }}<input type="hidden" name="action" value="fit"><button class="primary">Fit model</button></form>
+    <form method="post" action="{{ url_for('admin_calibration') }}">{{ csrf_field() }}<input type="hidden" name="action" value="clear"><button class="link">Clear points</button></form>
+  </div>
+</section>
+
+<section class="card" id="whitelist">
+  <h2>Invigilator whitelist</h2>
+  <p class="hint">Devices on this list never raise alerts (invigilator phones, smartwatches, hearing aids you have checked).</p>
+  <form method="post" action="{{ url_for('admin_whitelist') }}" class="row">
+    {{ csrf_field() }}<input name="mac" placeholder="aa:bb:cc:dd:ee:ff" required><input name="label" placeholder="Dr. X phone">
+    <button class="primary">Add</button>
+  </form>
+  <table>
+    <tr><th>MAC</th><th>Label</th><th></th></tr>
+    {% for w in whitelist %}
+    <tr><td><code>{{ w.mac }}</code></td><td>{{ w.label }}</td>
+      <td><form method="post" action="{{ url_for('admin_whitelist') }}">{{ csrf_field() }}<input type="hidden" name="action" value="delete"><input type="hidden" name="mac" value="{{ w.mac }}"><button class="link">Remove</button></form></td></tr>
+    {% else %}<tr><td colspan="3" class="empty">Empty.</td></tr>{% endfor %}
+  </table>
+</section>
+
+<section class="card" id="users">
+  <h2>Users</h2>
+  <table>
+    <tr><th>Username</th><th>Role</th><th></th></tr>
+    {% for u in users %}
+    <tr><td>{{ u.username }}</td><td>{{ u.role }}</td>
+      <td><form method="post" action="{{ url_for('admin_users') }}">{{ csrf_field() }}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ u.id }}"><button class="link danger-text">Delete</button></form></td></tr>
+    {% endfor %}
+  </table>
+  <form method="post" action="{{ url_for('admin_users') }}" class="row">
+    {{ csrf_field() }}
+    <input name="username" placeholder="username" required>
+    <input name="password" type="password" placeholder="password (8+ chars)" required minlength="8">
+    <select name="role"><option value="proctor">Proctor</option><option value="admin">Admin</option></select>
+    <button class="primary">Create / reset user</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.querySelectorAll('.ts').forEach(td => { if (td.dataset.ts) td.textContent = new Date(td.dataset.ts * 1000).toLocaleString(); });
+</script>
+{% endblock %}

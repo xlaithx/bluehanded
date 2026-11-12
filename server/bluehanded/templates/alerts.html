@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Alert log · Blue-Handed{% endblock %}
+{% block body %}
+<section class="card">
+  <h1>Alert log</h1>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Time</th><th>Session</th><th>Device</th><th>Severity</th><th>Reason</th><th>Location</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in alerts %}
+      <tr class="{{ a.status }}">
+        <td class="ts" data-ts="{{ a.created_at }}"></td>
+        <td>{{ a.session_name }}</td>
+        <td><a href="{{ url_for('device_page', mac=a.mac) }}">{{ a.name or a.mac }}</a></td>
+        <td>{{ a.severity }}</td>
+        <td>{{ a.reason }}</td>
+        <td>{% if a.x is not none %}({{ '%.1f'|format(a.x) }}, {{ '%.1f'|format(a.y) }}) m{% endif %}</td>
+        <td>{{ a.status|replace('_', ' ') }}{% if a.verified_by %} by {{ a.verified_by }}{% endif %}{% if a.note %}<br><small>{{ a.note }}</small>{% endif %}</td>
+        <td>{% if a.status == 'open' %}
+          <button class="danger" data-id="{{ a.id }}" data-v="confirmed">Confirm</button>
+          <button data-id="{{ a.id }}" data-v="false_alarm">False alarm</button>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="empty">No alerts recorded.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script>
+  document.querySelectorAll('.ts').forEach(td => td.textContent = new Date(td.dataset.ts * 1000).toLocaleString());
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('button[data-id]');
+    if (!b) return;
+    try { if (await BH.verify(b.dataset.id, b.dataset.v)) location.reload(); } catch (err) { alert(err.message); }
+  });
+</script>
+{% endblock %}

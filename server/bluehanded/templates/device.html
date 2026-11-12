@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ info.name or mac }} · Blue-Handed{% endblock %}
+{% block body %}
+<section class="card">
+  <h1>{{ info.name or "(no name)" }} <small><code>{{ mac }}</code></small></h1>
+  <dl class="kv">
+    <dt>Address type</dt><dd>{{ info.addr_type or "unknown" }}{% if info.addr_type == "random" %} (may be a randomised MAC){% endif %}</dd>
+    <dt>Audio profile</dt><dd>{{ ("Yes: " ~ info.audio_reason) if info.is_audio else "No" }}</dd>
+    <dt>Suspicious</dt><dd>{{ "Yes" if info.suspicious else "No" }}</dd>
+  </dl>
+  <h2>RSSI per node</h2>
+  <p class="hint">Dots are raw readings, lines are the Kalman-filtered values used for distance.</p>
+  <canvas id="chart" height="120"></canvas>
+</section>
+<section class="card">
+  <h2>Alerts for this device</h2>
+  {% if alerts %}
+  <table>
+    <tr><th>Time</th><th>Severity</th><th>Reason</th><th>Status</th><th>Verified by</th><th>Note</th></tr>
+    {% for a in alerts %}
+    <tr><td class="ts" data-ts="{{ a.created_at }}"></td><td>{{ a.severity }}</td><td>{{ a.reason }}</td><td>{{ a.status }}</td><td>{{ a.verified_by or "" }}</td><td>{{ a.note or "" }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="empty">No alerts.</p>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.js') }}"></script>
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script>
+  (async () => {
+    let chart = null;
+    const load = async () => {
+      const h = await (await fetch('/api/device/{{ mac|urlencode }}/history')).json();
+      chart = BH.rssiChart(document.getElementById('chart'), h, chart);
+    };
+    await load();
+    setInterval(load, 3000);
+    document.querySelectorAll('.ts').forEach(td => td.textContent = new Date(td.dataset.ts * 1000).toLocaleString());
+  })();
+</script>
+{% endblock %}

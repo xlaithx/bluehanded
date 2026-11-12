@@ -1,0 +1,12 @@
+# Who may publish/subscribe to what (copy to /etc/mosquitto/bluehanded.acl).
+# Nodes can only send scans/status and read config; only the server reads scans.
+
+user bluehanded-server
+topic read blue-handed/scan/#
+topic read blue-handed/status/#
+topic write blue-handed/config/#
+
+user bluehanded-node
+topic write blue-handed/scan/#
+topic readwrite blue-handed/status/#
+topic read blue-handed/config/#

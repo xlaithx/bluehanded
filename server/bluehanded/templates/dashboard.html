@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="dash">
+  <section class="card map-card">
+    <div class="card-head">
+      <h2>{{ room.name }} <small>{{ room.width }} m × {{ room.height }} m</small></h2>
+      <div class="controls">
+        <label><input type="checkbox" id="show-all" checked> All devices</label>
+        <label><input type="checkbox" id="show-heat"> Heatmap</label>
+        <label><input type="checkbox" id="sound" checked> Sound</label>
+        <span id="conn" class="pill off">offline</span>
+      </div>
+    </div>
+    <canvas id="map"></canvas>
+    <div class="legend">
+      <span><i class="dot node"></i>Node online</span>
+      <span><i class="dot node-off"></i>Node offline</span>
+      <span><i class="dot sus"></i>Suspicious</span>
+      <span><i class="dot audio"></i>Audio device</span>
+      <span><i class="dot normal"></i>Other device</span>
+      <span><i class="dot white"></i>Whitelisted</span>
+    </div>
+  </section>
+
+  <section class="card alerts-card">
+    <div class="card-head"><h2>Active alerts <span id="alert-count" class="badge">0</span></h2></div>
+    <div id="alerts" class="alerts"><p class="empty">No alerts yet.</p></div>
+  </section>
+
+  <section class="card nodes-card">
+    <div class="card-head"><h2>Nodes</h2></div>
+    <div id="nodes" class="nodes"></div>
+  </section>
+
+  <section class="card devices-card">
+    <div class="card-head"><h2>Detected devices <span id="device-count" class="badge">0</span></h2></div>
+    <div class="table-wrap">
+      <table id="devices">
+        <thead><tr><th>Status</th><th>MAC</th><th>Name</th><th>Best RSSI</th><th>Nearest node</th><th>Position</th><th>Cycles</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<dialog id="detail">
+  <form method="dialog" class="dialog-head"><h2 id="detail-title">Device</h2><button class="link">Close</button></form>
+  <div id="detail-body"></div>
+  <canvas id="rssi-chart" height="180"></canvas>
+  <a id="detail-link" href="#">Open full device page</a>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.js') }}"></script>
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
